@@ -1,9 +1,9 @@
 import { motion } from 'framer-motion';
 import { Users, ArrowRight } from 'lucide-react';
-import { useFinanceStore } from '@/store/financeStore';
+import { useGroups } from '@/hooks/useGroups';
 
 export function GroupsSummary() {
-  const { groups } = useFinanceStore();
+  const { groups, isLoading } = useGroups();
 
   return (
     <motion.div
@@ -35,17 +35,13 @@ export function GroupsSummary() {
             <div className="flex-1 min-w-0">
               <p className="font-medium text-foreground">{group.name}</p>
               <p className="text-sm text-muted-foreground">
-                {group.members.length + 1} members
+                {group.description || 'No description'}
               </p>
-            </div>
-            <div className="text-right">
-              <p className="text-sm text-muted-foreground">Your share</p>
-              <p className="font-semibold text-foreground">${group.yourShare.toFixed(2)}</p>
             </div>
           </motion.div>
         ))}
 
-        {groups.length === 0 && (
+        {groups.length === 0 && !isLoading && (
           <div className="text-center py-8">
             <Users className="w-12 h-12 mx-auto text-muted-foreground/50 mb-3" />
             <p className="text-muted-foreground">No groups yet</p>

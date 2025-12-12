@@ -1,18 +1,18 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, Target, X, DollarSign, Calendar } from 'lucide-react';
+import { Plus, Target, X, DollarSign, Calendar, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useFinanceStore } from '@/store/financeStore';
+import { useSavingsGoals } from '@/hooks/useSavingsGoals';
 import { toast } from 'sonner';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function SavingsGoals() {
-  const { savingsGoals, addSavingsGoal, updateSavingsGoal } = useFinanceStore();
+  const { goals: savingsGoals, addGoal, addToGoal, deleteGoal, isLoading } = useSavingsGoals();
   const [isAdding, setIsAdding] = useState(false);
   const [name, setName] = useState('');
   const [targetAmount, setTargetAmount] = useState('');
-  const [currentAmount, setCurrentAmount] = useState('');
   const [deadline, setDeadline] = useState('');
 
   const handleSubmit = () => {
@@ -21,29 +21,40 @@ export default function SavingsGoals() {
       return;
     }
 
-    addSavingsGoal({
+    addGoal({
       name,
       targetAmount: parseFloat(targetAmount),
-      currentAmount: parseFloat(currentAmount) || 0,
       deadline: deadline || undefined,
     });
 
-    toast.success('Savings goal created!');
     setName('');
     setTargetAmount('');
-    setCurrentAmount('');
     setDeadline('');
     setIsAdding(false);
   };
 
-  const handleAddFunds = (goalId: string, currentAmount: number) => {
+  const handleAddFunds = (goalId: string) => {
     const amount = prompt('How much would you like to add?');
-    if (amount) {
-      const newAmount = currentAmount + parseFloat(amount);
-      updateSavingsGoal(goalId, newAmount);
-      toast.success('Funds added successfully!');
+    if (amount && !isNaN(parseFloat(amount))) {
+      addToGoal({ id: goalId, amount: parseFloat(amount) });
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <Skeleton className="h-10 w-48" />
+          <Skeleton className="h-10 w-32" />
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {[...Array(2)].map((_, i) => (
+            <Skeleton key={i} className="h-64 rounded-xl" />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -87,34 +98,19 @@ export default function SavingsGoals() {
             <div className="space-y-2">
               <Label htmlFor="target">Target Amount *</Label>
               <div className="relative">
-                <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">₹</span>
                 <Input
                   id="target"
                   type="number"
                   placeholder="0.00"
-                  className="pl-9"
+                  className="pl-8"
                   value={targetAmount}
                   onChange={(e) => setTargetAmount(e.target.value)}
                 />
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="current">Current Savings</Label>
-              <div className="relative">
-                <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  id="current"
-                  type="number"
-                  placeholder="0.00"
-                  className="pl-9"
-                  value={currentAmount}
-                  onChange={(e) => setCurrentAmount(e.target.value)}
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
+            <div className="space-y-2 md:col-span-2">
               <Label htmlFor="deadline">Target Date (Optional)</Label>
               <Input
                 id="deadline"
@@ -139,8 +135,10 @@ export default function SavingsGoals() {
       {/* Goals Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {savingsGoals.map((goal, index) => {
-          const progress = (goal.currentAmount / goal.targetAmount) * 100;
-          const remaining = goal.targetAmount - goal.currentAmount;
+          const progress = goal.target_amount > 0 
+            ? (goal.current_amount / goal.target_amount) * 100 
+            : 0;
+          const remaining = goal.target_amount - goal.current_amount;
 
           return (
             <motion.div
@@ -178,25 +176,35 @@ export default function SavingsGoals() {
               <div className="grid grid-cols-3 gap-3 mb-4">
                 <div className="text-center p-3 rounded-lg bg-secondary/50">
                   <p className="text-xs text-muted-foreground mb-1">Saved</p>
-                  <p className="font-semibold text-foreground">${goal.currentAmount.toLocaleString()}</p>
+                  <p className="font-semibold text-foreground">₹{goal.current_amount.toLocaleString()}</p>
                 </div>
                 <div className="text-center p-3 rounded-lg bg-secondary/50">
                   <p className="text-xs text-muted-foreground mb-1">Target</p>
-                  <p className="font-semibold text-foreground">${goal.targetAmount.toLocaleString()}</p>
+                  <p className="font-semibold text-foreground">₹{goal.target_amount.toLocaleString()}</p>
                 </div>
                 <div className="text-center p-3 rounded-lg bg-secondary/50">
                   <p className="text-xs text-muted-foreground mb-1">Remaining</p>
-                  <p className="font-semibold text-primary">${remaining.toLocaleString()}</p>
+                  <p className="font-semibold text-primary">₹{Math.max(remaining, 0).toLocaleString()}</p>
                 </div>
               </div>
 
-              <Button 
-                className="w-full gap-2" 
-                onClick={() => handleAddFunds(goal.id, goal.currentAmount)}
-              >
-                <Plus className="w-4 h-4" />
-                Add Funds
-              </Button>
+              <div className="flex gap-2">
+                <Button 
+                  className="flex-1 gap-2" 
+                  onClick={() => handleAddFunds(goal.id)}
+                >
+                  <Plus className="w-4 h-4" />
+                  Add Funds
+                </Button>
+                <Button 
+                  variant="outline"
+                  size="icon"
+                  onClick={() => deleteGoal(goal.id)}
+                  className="text-muted-foreground hover:text-danger hover:border-danger"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+              </div>
             </motion.div>
           );
         })}

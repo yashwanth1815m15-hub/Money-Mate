@@ -1,30 +1,33 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Tag, Plus, Trash2, Edit2, X, Check } from 'lucide-react';
+import { Tag, Plus, Trash2, Edit2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { useFinanceStore } from '@/store/financeStore';
-import { toast } from 'sonner';
+import { useCategories } from '@/hooks/useCategories';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function CategorySettings() {
-  const { categories } = useFinanceStore();
+  const { categories, addCategory, deleteCategory, isLoading } = useCategories();
   const [newCategory, setNewCategory] = useState('');
 
   const handleAddCategory = () => {
     if (!newCategory.trim()) {
-      toast.error('Please enter a category name');
       return;
     }
 
-    if (categories.includes(newCategory.trim())) {
-      toast.error('Category already exists');
-      return;
-    }
-
-    // In a real app, this would update the store
-    toast.success('Category added! (Demo only - connect to backend to persist)');
+    addCategory({ name: newCategory.trim() });
     setNewCategory('');
   };
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6 max-w-2xl">
+        <Skeleton className="h-10 w-48" />
+        <Skeleton className="h-24 rounded-xl" />
+        <Skeleton className="h-64 rounded-xl" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 max-w-2xl">
@@ -66,28 +69,40 @@ export default function CategorySettings() {
         <div className="space-y-2">
           {categories.map((category, index) => (
             <motion.div
-              key={category}
+              key={category.id}
               initial={{ opacity: 0, x: -10 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.15 + index * 0.03 }}
               className="flex items-center justify-between p-3 rounded-lg bg-secondary/50 hover:bg-secondary transition-colors"
             >
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
+                <div 
+                  className="w-8 h-8 rounded-lg flex items-center justify-center"
+                  style={{ 
+                    backgroundColor: category.color ? `${category.color}20` : 'hsl(var(--primary) / 0.1)',
+                    color: category.color || 'hsl(var(--primary))'
+                  }}
+                >
                   <Tag className="w-4 h-4" />
                 </div>
-                <span className="font-medium text-foreground">{category}</span>
+                <span className="font-medium text-foreground">{category.name}</span>
               </div>
               <div className="flex items-center gap-1">
-                <button className="p-2 rounded-md hover:bg-background transition-colors text-muted-foreground hover:text-foreground">
-                  <Edit2 className="w-4 h-4" />
-                </button>
-                <button className="p-2 rounded-md hover:bg-danger/10 transition-colors text-muted-foreground hover:text-danger">
+                <button 
+                  onClick={() => deleteCategory(category.id)}
+                  className="p-2 rounded-md hover:bg-danger/10 transition-colors text-muted-foreground hover:text-danger"
+                >
                   <Trash2 className="w-4 h-4" />
                 </button>
               </div>
             </motion.div>
           ))}
+
+          {categories.length === 0 && (
+            <p className="text-center text-muted-foreground py-8">
+              No categories yet. Add your first category above.
+            </p>
+          )}
         </div>
       </motion.div>
 

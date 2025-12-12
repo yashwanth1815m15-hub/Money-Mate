@@ -5,7 +5,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useFinanceStore } from '@/store/financeStore';
+import { useExpenses } from '@/hooks/useExpenses';
+import { useCategories } from '@/hooks/useCategories';
+import { useGroups } from '@/hooks/useGroups';
 import { toast } from 'sonner';
 
 interface AddExpenseModalProps {
@@ -13,10 +15,21 @@ interface AddExpenseModalProps {
   onClose: () => void;
 }
 
+const currencies = [
+  { value: 'INR', label: '₹ INR', symbol: '₹' },
+  { value: 'USD', label: '$ USD', symbol: '$' },
+  { value: 'EUR', label: '€ EUR', symbol: '€' },
+  { value: 'GBP', label: '£ GBP', symbol: '£' },
+];
+
 export function AddExpenseModal({ isOpen, onClose }: AddExpenseModalProps) {
-  const { categories, groups, addExpense } = useFinanceStore();
+  const { addExpense, isAdding } = useExpenses();
+  const { categories } = useCategories();
+  const { groups } = useGroups();
+
   const [name, setName] = useState('');
   const [amount, setAmount] = useState('');
+  const [currency, setCurrency] = useState('INR');
   const [category, setCategory] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [type, setType] = useState<'personal' | 'group'>('personal');
@@ -34,20 +47,21 @@ export function AddExpenseModal({ isOpen, onClose }: AddExpenseModalProps) {
     addExpense({
       name,
       amount: parseFloat(amount),
-      category,
+      currency,
+      category_name: category,
       date,
       type,
-      groupId: type === 'group' ? groupId : undefined,
-      paymentStatus,
+      group_id: type === 'group' ? groupId : undefined,
+      payment_status: paymentStatus,
     });
 
-    toast.success('Expense added successfully!');
     handleClose();
   };
 
   const handleClose = () => {
     setName('');
     setAmount('');
+    setCurrency('INR');
     setCategory('');
     setDate(new Date().toISOString().split('T')[0]);
     setType('personal');
@@ -55,6 +69,8 @@ export function AddExpenseModal({ isOpen, onClose }: AddExpenseModalProps) {
     setPaymentStatus('paid');
     onClose();
   };
+
+  const selectedCurrency = currencies.find(c => c.value === currency);
 
   return (
     <AnimatePresence>
@@ -75,9 +91,9 @@ export function AddExpenseModal({ isOpen, onClose }: AddExpenseModalProps) {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             transition={{ duration: 0.2 }}
-            className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-lg bg-card rounded-2xl shadow-xl z-50 overflow-hidden"
+            className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-lg max-h-[90vh] bg-card rounded-2xl shadow-xl z-50 overflow-hidden flex flex-col"
           >
-            <div className="flex items-center justify-between p-6 border-b border-border">
+            <div className="flex items-center justify-between p-6 border-b border-border shrink-0">
               <h2 className="text-xl font-heading font-semibold">Add New Expense</h2>
               <button
                 onClick={handleClose}
@@ -87,7 +103,7 @@ export function AddExpenseModal({ isOpen, onClose }: AddExpenseModalProps) {
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="p-6 space-y-5">
+            <form onSubmit={handleSubmit} className="p-6 space-y-5 overflow-y-auto flex-1">
               {/* Name */}
               <div className="space-y-2">
                 <Label htmlFor="name">Expense Name *</Label>
@@ -99,20 +115,40 @@ export function AddExpenseModal({ isOpen, onClose }: AddExpenseModalProps) {
                 />
               </div>
 
-              {/* Amount */}
-              <div className="space-y-2">
-                <Label htmlFor="amount">Amount *</Label>
-                <div className="relative">
-                  <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                  <Input
-                    id="amount"
-                    type="number"
-                    step="0.01"
-                    placeholder="0.00"
-                    className="pl-10"
-                    value={amount}
-                    onChange={(e) => setAmount(e.target.value)}
-                  />
+              {/* Amount & Currency */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="amount">Amount *</Label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-medium">
+                      {selectedCurrency?.symbol}
+                    </span>
+                    <Input
+                      id="amount"
+                      type="number"
+                      step="0.01"
+                      placeholder="0.00"
+                      className="pl-8"
+                      value={amount}
+                      onChange={(e) => setAmount(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Currency</Label>
+                  <Select value={currency} onValueChange={setCurrency}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {currencies.map((cur) => (
+                        <SelectItem key={cur.value} value={cur.value}>
+                          {cur.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
 
@@ -127,7 +163,7 @@ export function AddExpenseModal({ isOpen, onClose }: AddExpenseModalProps) {
                     </SelectTrigger>
                     <SelectContent>
                       {categories.map((cat) => (
-                        <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                        <SelectItem key={cat.id} value={cat.name}>{cat.name}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -157,7 +193,7 @@ export function AddExpenseModal({ isOpen, onClose }: AddExpenseModalProps) {
                     onClick={() => setType('personal')}
                     className={`flex-1 flex items-center justify-center gap-2 p-3 rounded-lg border transition-all ${
                       type === 'personal' 
-                        ? 'border-primary bg-primary-muted text-primary' 
+                        ? 'border-primary bg-primary/10 text-primary' 
                         : 'border-border hover:border-primary/50'
                     }`}
                   >
@@ -169,7 +205,7 @@ export function AddExpenseModal({ isOpen, onClose }: AddExpenseModalProps) {
                     onClick={() => setType('group')}
                     className={`flex-1 flex items-center justify-center gap-2 p-3 rounded-lg border transition-all ${
                       type === 'group' 
-                        ? 'border-primary bg-primary-muted text-primary' 
+                        ? 'border-primary bg-primary/10 text-primary' 
                         : 'border-border hover:border-primary/50'
                     }`}
                   >
@@ -216,8 +252,8 @@ export function AddExpenseModal({ isOpen, onClose }: AddExpenseModalProps) {
                 <Button type="button" variant="outline" className="flex-1" onClick={handleClose}>
                   Cancel
                 </Button>
-                <Button type="submit" className="flex-1">
-                  Add Expense
+                <Button type="submit" className="flex-1" disabled={isAdding}>
+                  {isAdding ? 'Adding...' : 'Add Expense'}
                 </Button>
               </div>
             </form>

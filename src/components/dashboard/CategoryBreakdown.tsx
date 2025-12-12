@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { useFinanceStore } from '@/store/financeStore';
+import { useExpenses } from '@/hooks/useExpenses';
 
 const categoryColors = [
   'hsl(160, 84%, 39%)',
@@ -11,9 +11,8 @@ const categoryColors = [
 ];
 
 export function CategoryBreakdown() {
-  const { getCategorySpending } = useFinanceStore();
+  const { getCategorySpending } = useExpenses();
   const categories = getCategorySpending().slice(0, 5);
-  const total = categories.reduce((sum, c) => sum + c.amount, 0);
 
   return (
     <motion.div
@@ -45,7 +44,7 @@ export function CategoryBreakdown() {
                 />
                 <span className="text-sm font-medium text-foreground">{category.category}</span>
               </div>
-              <span className="text-sm text-muted-foreground">${category.amount.toFixed(2)}</span>
+              <span className="text-sm text-muted-foreground">₹{category.amount.toFixed(2)}</span>
             </div>
             <div className="h-2 rounded-full bg-muted overflow-hidden">
               <motion.div

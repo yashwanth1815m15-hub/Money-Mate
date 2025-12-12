@@ -1,11 +1,15 @@
 import { motion } from 'framer-motion';
-import { useFinanceStore } from '@/store/financeStore';
+import { useExpenses } from '@/hooks/useExpenses';
+import { useBudget } from '@/hooks/useBudget';
 
 export function MonthlyOverview() {
-  const { monthlyBudget, getTotalSpent } = useFinanceStore();
-  const totalSpent = getTotalSpent();
+  const { getMonthlyStats } = useExpenses();
+  const { budget } = useBudget();
+
+  const { totalSpent } = getMonthlyStats();
+  const monthlyBudget = budget?.monthly_budget || 50000;
   const remaining = monthlyBudget - totalSpent;
-  const percentageUsed = (totalSpent / monthlyBudget) * 100;
+  const percentageUsed = monthlyBudget > 0 ? (totalSpent / monthlyBudget) * 100 : 0;
   const isOverBudget = percentageUsed > 100;
 
   return (
@@ -45,16 +49,16 @@ export function MonthlyOverview() {
         <div className="grid grid-cols-3 gap-4">
           <div className="text-center p-3 rounded-lg bg-secondary/50">
             <p className="text-xs text-muted-foreground mb-1">Budget</p>
-            <p className="text-lg font-semibold text-foreground">${monthlyBudget.toLocaleString()}</p>
+            <p className="text-lg font-semibold text-foreground">₹{monthlyBudget.toLocaleString()}</p>
           </div>
           <div className="text-center p-3 rounded-lg bg-secondary/50">
             <p className="text-xs text-muted-foreground mb-1">Spent</p>
-            <p className="text-lg font-semibold text-foreground">${totalSpent.toFixed(0)}</p>
+            <p className="text-lg font-semibold text-foreground">₹{totalSpent.toFixed(0)}</p>
           </div>
           <div className="text-center p-3 rounded-lg bg-secondary/50">
             <p className="text-xs text-muted-foreground mb-1">Remaining</p>
             <p className={`text-lg font-semibold ${remaining >= 0 ? 'text-success' : 'text-danger'}`}>
-              ${Math.abs(remaining).toFixed(0)}
+              ₹{Math.abs(remaining).toFixed(0)}
             </p>
           </div>
         </div>
@@ -66,7 +70,7 @@ export function MonthlyOverview() {
             className="p-3 rounded-lg bg-danger/10 border border-danger/20"
           >
             <p className="text-sm text-danger font-medium">
-              ⚠️ You've exceeded your monthly budget by ${(totalSpent - monthlyBudget).toFixed(2)}
+              ⚠️ You've exceeded your monthly budget by ₹{(totalSpent - monthlyBudget).toFixed(2)}
             </p>
           </motion.div>
         )}

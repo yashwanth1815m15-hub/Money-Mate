@@ -4,25 +4,39 @@ import { Settings, DollarSign, Save, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useFinanceStore } from '@/store/financeStore';
+import { useBudget } from '@/hooks/useBudget';
+import { useExpenses } from '@/hooks/useExpenses';
 import { toast } from 'sonner';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function BudgetSettings() {
-  const { monthlyBudget, setMonthlyBudget, getTotalSpent } = useFinanceStore();
-  const [budget, setBudget] = useState(monthlyBudget.toString());
-  const totalSpent = getTotalSpent();
-  const percentageUsed = (totalSpent / monthlyBudget) * 100;
+  const { budget, updateBudget, isLoading: budgetLoading } = useBudget();
+  const { getMonthlyStats, isLoading: expensesLoading } = useExpenses();
+
+  const monthlyBudget = budget?.monthly_budget || 50000;
+  const [budgetInput, setBudgetInput] = useState(monthlyBudget.toString());
+  const { totalSpent } = getMonthlyStats();
+  const percentageUsed = monthlyBudget > 0 ? (totalSpent / monthlyBudget) * 100 : 0;
 
   const handleSave = () => {
-    const newBudget = parseFloat(budget);
+    const newBudget = parseFloat(budgetInput);
     if (isNaN(newBudget) || newBudget <= 0) {
       toast.error('Please enter a valid budget amount');
       return;
     }
 
-    setMonthlyBudget(newBudget);
-    toast.success('Budget updated successfully!');
+    updateBudget({ monthlyBudget: newBudget });
   };
+
+  if (budgetLoading || expensesLoading) {
+    return (
+      <div className="space-y-6 max-w-2xl">
+        <Skeleton className="h-10 w-48" />
+        <Skeleton className="h-48 rounded-xl" />
+        <Skeleton className="h-48 rounded-xl" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 max-w-2xl">
@@ -43,16 +57,16 @@ export default function BudgetSettings() {
         <div className="grid grid-cols-3 gap-4 mb-6">
           <div className="p-4 rounded-lg bg-secondary/50 text-center">
             <p className="text-sm text-muted-foreground mb-1">Budget</p>
-            <p className="text-2xl font-bold text-foreground">${monthlyBudget.toLocaleString()}</p>
+            <p className="text-2xl font-bold text-foreground">₹{monthlyBudget.toLocaleString()}</p>
           </div>
           <div className="p-4 rounded-lg bg-secondary/50 text-center">
             <p className="text-sm text-muted-foreground mb-1">Spent</p>
-            <p className="text-2xl font-bold text-foreground">${totalSpent.toFixed(0)}</p>
+            <p className="text-2xl font-bold text-foreground">₹{totalSpent.toFixed(0)}</p>
           </div>
           <div className="p-4 rounded-lg bg-secondary/50 text-center">
             <p className="text-sm text-muted-foreground mb-1">Remaining</p>
             <p className={`text-2xl font-bold ${monthlyBudget - totalSpent >= 0 ? 'text-success' : 'text-danger'}`}>
-              ${Math.abs(monthlyBudget - totalSpent).toFixed(0)}
+              ₹{Math.abs(monthlyBudget - totalSpent).toFixed(0)}
             </p>
           </div>
         </div>
@@ -95,13 +109,13 @@ export default function BudgetSettings() {
           <div className="space-y-2">
             <Label htmlFor="budget">Set your monthly spending limit</Label>
             <div className="relative">
-              <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-medium">₹</span>
               <Input
                 id="budget"
                 type="number"
-                className="pl-10 text-lg h-12"
-                value={budget}
-                onChange={(e) => setBudget(e.target.value)}
+                className="pl-8 text-lg h-12"
+                value={budgetInput}
+                onChange={(e) => setBudgetInput(e.target.value)}
               />
             </div>
           </div>
