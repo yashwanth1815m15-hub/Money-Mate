@@ -2,7 +2,7 @@
 
 ## Project info
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+**URL**: https://money-mate-copy-73a20f8a.base44.app
 
 ## How can I edit this code?
 
