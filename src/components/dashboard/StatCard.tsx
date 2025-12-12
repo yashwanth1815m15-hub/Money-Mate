@@ -1,6 +1,8 @@
 import { motion } from 'framer-motion';
 import { LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { formatCurrency } from '@/lib/currency';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface StatCardProps {
   title: string;
@@ -23,6 +25,9 @@ const variantStyles = {
 };
 
 export function StatCard({ title, value, icon: Icon, trend, variant = 'primary', delay = 0 }: StatCardProps) {
+  const { profile } = useAuth();
+  const currency = profile?.preferred_currency || 'INR';
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -39,7 +44,7 @@ export function StatCard({ title, value, icon: Icon, trend, variant = 'primary',
             transition={{ duration: 0.4, delay: delay + 0.1 }}
             className="text-3xl font-heading font-bold text-foreground"
           >
-            {typeof value === 'number' ? `$${value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : value}
+            {typeof value === 'number' ? formatCurrency(value, currency) : value}
           </motion.p>
           {trend && (
             <p className={cn(

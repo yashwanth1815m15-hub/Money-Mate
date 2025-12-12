@@ -1,6 +1,8 @@
 import { motion } from 'framer-motion';
 import { ArrowUpRight, ArrowDownRight, Users, ShoppingBag, Utensils, Car, Tv, Zap, Plane, GraduationCap, Heart } from 'lucide-react';
 import { useExpenses, Expense } from '@/hooks/useExpenses';
+import { useAuth } from '@/contexts/AuthContext';
+import { formatCurrency } from '@/lib/currency';
 import { cn } from '@/lib/utils';
 
 const categoryIcons: Record<string, React.ElementType> = {
@@ -31,6 +33,8 @@ const formatDate = (dateStr: string) => {
 
 export function RecentActivity() {
   const { getRecentActivity } = useExpenses();
+  const { profile } = useAuth();
+  const currency = profile?.preferred_currency || 'INR';
   const recentExpenses = getRecentActivity(5);
 
   return (
@@ -50,7 +54,7 @@ export function RecentActivity() {
       <div className="space-y-1">
         {recentExpenses.length > 0 ? (
           recentExpenses.map((expense, index) => (
-            <ActivityItem key={expense.id} expense={expense} index={index} />
+            <ActivityItem key={expense.id} expense={expense} index={index} currency={currency} />
           ))
         ) : (
           <p className="text-center text-muted-foreground py-8">
@@ -62,7 +66,7 @@ export function RecentActivity() {
   );
 }
 
-function ActivityItem({ expense, index }: { expense: Expense; index: number }) {
+function ActivityItem({ expense, index, currency }: { expense: Expense; index: number; currency: string }) {
   const Icon = categoryIcons[expense.category_name || ''] || ShoppingBag;
   const isOwed = expense.payment_status === 'you_are_owed';
   const youOwe = expense.payment_status === 'you_owe';
@@ -97,7 +101,7 @@ function ActivityItem({ expense, index }: { expense: Expense; index: number }) {
           'font-semibold',
           isOwed ? 'text-success' : youOwe ? 'text-danger' : 'text-foreground'
         )}>
-          {isOwed ? '+' : youOwe ? '-' : '-'}₹{expense.amount.toFixed(2)}
+          {isOwed ? '+' : '-'}{formatCurrency(expense.amount, currency)}
         </p>
         {expense.payment_status !== 'paid' && (
           <span className={cn(

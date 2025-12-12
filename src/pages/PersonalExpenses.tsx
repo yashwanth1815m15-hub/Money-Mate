@@ -4,12 +4,17 @@ import { Plus, Search, Trash2, Edit2, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useExpenses } from '@/hooks/useExpenses';
+import { useAuth } from '@/contexts/AuthContext';
 import { AddExpenseModal } from '@/components/modals/AddExpenseModal';
+import { formatCurrency } from '@/lib/currency';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export default function PersonalExpenses() {
   const { expenses, deleteExpense, isLoading } = useExpenses();
+  const { profile } = useAuth();
+  const currency = profile?.preferred_currency || 'INR';
+  
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [filter, setFilter] = useState<'all' | 'personal' | 'group'>('all');
@@ -18,7 +23,8 @@ export default function PersonalExpenses() {
     .filter(e => filter === 'all' || e.type === filter)
     .filter(e => 
       e.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-      e.category_name?.toLowerCase().includes(searchQuery.toLowerCase())
+      e.category_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      e.notes?.toLowerCase().includes(searchQuery.toLowerCase())
     )
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
@@ -54,7 +60,7 @@ export default function PersonalExpenses() {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
-            placeholder="Search expenses..."
+            placeholder="Search expenses by name, category, or notes..."
             className="pl-10"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -139,8 +145,7 @@ export default function PersonalExpenses() {
                   </td>
                   <td className="py-4 px-4 text-right">
                     <span className="font-semibold text-foreground">
-                      {expense.currency === 'INR' ? '₹' : expense.currency === 'USD' ? '$' : '€'}
-                      {expense.amount.toFixed(2)}
+                      {formatCurrency(expense.amount, expense.currency || currency)}
                     </span>
                   </td>
                   <td className="py-4 px-4">

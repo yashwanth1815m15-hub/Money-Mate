@@ -1,17 +1,23 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Tag, DollarSign, AlertTriangle } from 'lucide-react';
+import { Tag, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useCategories } from '@/hooks/useCategories';
 import { useBudget } from '@/hooks/useBudget';
 import { useExpenses } from '@/hooks/useExpenses';
+import { useAuth } from '@/contexts/AuthContext';
+import { formatCurrency, getCurrencySymbol } from '@/lib/currency';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export default function CategoryBudgets() {
   const { categories, isLoading: categoriesLoading } = useCategories();
   const { categoryBudgets, setCategoryBudget, isLoading: budgetsLoading } = useBudget();
   const { getCategorySpending, isLoading: expensesLoading } = useExpenses();
+  const { profile } = useAuth();
+  
+  const currency = profile?.preferred_currency || 'INR';
+  const symbol = getCurrencySymbol(currency);
 
   const [editingCategory, setEditingCategory] = useState<string | null>(null);
   const [newLimit, setNewLimit] = useState('');
@@ -91,7 +97,7 @@ export default function CategoryBudgets() {
                   <h3 className="font-medium text-foreground">{category.name}</h3>
                   {budget && (
                     <p className="text-sm text-muted-foreground">
-                      ₹{spent.toFixed(0)} / ₹{budget.limit_amount.toFixed(0)}
+                      {formatCurrency(spent, currency)} / {formatCurrency(budget.limit_amount, currency)}
                     </p>
                   )}
                 </div>
@@ -126,7 +132,7 @@ export default function CategoryBudgets() {
               {isEditing ? (
                 <div className="space-y-2">
                   <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">₹</span>
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">{symbol}</span>
                     <Input
                       type="number"
                       placeholder="Enter limit"
