@@ -18,6 +18,7 @@ import {
   Wallet
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface NavItem {
   label: string;
@@ -41,6 +42,7 @@ const navItems: NavItem[] = [
 export function AppSidebar() {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const location = useLocation();
+  const { signOut } = useAuth();
 
   return (
     <motion.aside
@@ -110,7 +112,7 @@ export function AppSidebar() {
 
       {/* Logout */}
       <div className="px-3 py-4 border-t border-sidebar-border">
-        <button className="sidebar-nav-item w-full text-left">
+        <button onClick={() => signOut()} className="sidebar-nav-item w-full text-left">
           <LogOut className="w-5 h-5 shrink-0" />
           <AnimatePresence mode="wait">
             {!isCollapsed && (
