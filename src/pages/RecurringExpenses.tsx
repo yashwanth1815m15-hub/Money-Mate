@@ -1,15 +1,17 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, RefreshCw, Calendar, X } from 'lucide-react';
+import { Plus, RefreshCw, Calendar, X, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useFinanceStore } from '@/store/financeStore';
-import { toast } from 'sonner';
+import { useRecurringExpenses } from '@/hooks/useRecurringExpenses';
+import { useCategories } from '@/hooks/useCategories';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function RecurringExpenses() {
-  const { recurringExpenses, categories, addRecurringExpense } = useFinanceStore();
+  const { recurringExpenses, addRecurring, deleteRecurring, isLoading } = useRecurringExpenses();
+  const { categories } = useCategories();
   const [isAdding, setIsAdding] = useState(false);
   const [name, setName] = useState('');
   const [amount, setAmount] = useState('');
@@ -19,25 +21,39 @@ export default function RecurringExpenses() {
 
   const handleSubmit = () => {
     if (!name || !amount || !category || !nextDueDate) {
-      toast.error('Please fill in all fields');
       return;
     }
 
-    addRecurringExpense({
+    addRecurring({
       name,
       amount: parseFloat(amount),
-      category,
+      categoryName: category,
       frequency,
       nextDueDate,
     });
 
-    toast.success('Recurring expense added!');
     setName('');
     setAmount('');
     setCategory('');
     setNextDueDate('');
     setIsAdding(false);
   };
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <Skeleton className="h-10 w-48" />
+          <Skeleton className="h-10 w-32" />
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {[...Array(3)].map((_, i) => (
+            <Skeleton key={i} className="h-40 rounded-xl" />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -80,13 +96,17 @@ export default function RecurringExpenses() {
 
             <div className="space-y-2">
               <Label htmlFor="amount">Amount</Label>
-              <Input
-                id="amount"
-                type="number"
-                placeholder="0.00"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-              />
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">₹</span>
+                <Input
+                  id="amount"
+                  type="number"
+                  placeholder="0.00"
+                  className="pl-8"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                />
+              </div>
             </div>
 
             <div className="space-y-2">
@@ -97,7 +117,7 @@ export default function RecurringExpenses() {
                 </SelectTrigger>
                 <SelectContent>
                   {categories.map((cat) => (
-                    <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                    <SelectItem key={cat.id} value={cat.name}>{cat.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -154,8 +174,14 @@ export default function RecurringExpenses() {
               </div>
               <div className="flex-1">
                 <h3 className="font-heading font-semibold">{expense.name}</h3>
-                <p className="text-sm text-muted-foreground">{expense.category}</p>
+                <p className="text-sm text-muted-foreground">{expense.category_name || 'Others'}</p>
               </div>
+              <button 
+                onClick={() => deleteRecurring(expense.id)}
+                className="p-2 rounded-md hover:bg-danger/10 transition-colors text-muted-foreground hover:text-danger"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
             </div>
 
             <div className="flex items-center justify-between p-3 rounded-lg bg-secondary/50">
@@ -163,11 +189,11 @@ export default function RecurringExpenses() {
                 <Calendar className="w-4 h-4" />
                 <span>{expense.frequency === 'monthly' ? 'Monthly' : 'Weekly'}</span>
               </div>
-              <span className="font-semibold text-foreground">${expense.amount.toFixed(2)}</span>
+              <span className="font-semibold text-foreground">₹{expense.amount.toFixed(2)}</span>
             </div>
 
             <p className="text-xs text-muted-foreground mt-3">
-              Next due: {new Date(expense.nextDueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+              Next due: {new Date(expense.next_due_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
             </p>
           </motion.div>
         ))}

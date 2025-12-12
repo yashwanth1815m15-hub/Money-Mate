@@ -1,23 +1,39 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, Search, Filter, Trash2, Edit2, Eye } from 'lucide-react';
+import { Plus, Search, Trash2, Edit2, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { useFinanceStore } from '@/store/financeStore';
+import { useExpenses } from '@/hooks/useExpenses';
 import { AddExpenseModal } from '@/components/modals/AddExpenseModal';
 import { cn } from '@/lib/utils';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function PersonalExpenses() {
-  const { expenses, deleteExpense } = useFinanceStore();
+  const { expenses, deleteExpense, isLoading } = useExpenses();
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [filter, setFilter] = useState<'all' | 'personal' | 'group'>('all');
 
   const filteredExpenses = expenses
     .filter(e => filter === 'all' || e.type === filter)
-    .filter(e => e.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                 e.category.toLowerCase().includes(searchQuery.toLowerCase()))
+    .filter(e => 
+      e.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+      e.category_name?.toLowerCase().includes(searchQuery.toLowerCase())
+    )
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <Skeleton className="h-10 w-48" />
+          <Skeleton className="h-10 w-32" />
+        </div>
+        <Skeleton className="h-12 w-full" />
+        <Skeleton className="h-96 w-full rounded-xl" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -94,7 +110,7 @@ export default function PersonalExpenses() {
                     <span className="font-medium text-foreground">{expense.name}</span>
                   </td>
                   <td className="py-4 px-4">
-                    <span className="text-sm text-muted-foreground">{expense.category}</span>
+                    <span className="text-sm text-muted-foreground">{expense.category_name || 'Others'}</span>
                   </td>
                   <td className="py-4 px-4">
                     <span className="text-sm text-muted-foreground">
@@ -114,15 +130,18 @@ export default function PersonalExpenses() {
                   <td className="py-4 px-4">
                     <span className={cn(
                       'text-xs px-2 py-1 rounded-full',
-                      expense.paymentStatus === 'paid' && 'bg-success/10 text-success',
-                      expense.paymentStatus === 'you_owe' && 'bg-danger/10 text-danger',
-                      expense.paymentStatus === 'you_are_owed' && 'bg-warning/10 text-warning'
+                      expense.payment_status === 'paid' && 'bg-success/10 text-success',
+                      expense.payment_status === 'you_owe' && 'bg-danger/10 text-danger',
+                      expense.payment_status === 'you_are_owed' && 'bg-warning/10 text-warning'
                     )}>
-                      {expense.paymentStatus.replace('_', ' ')}
+                      {expense.payment_status.replace('_', ' ')}
                     </span>
                   </td>
                   <td className="py-4 px-4 text-right">
-                    <span className="font-semibold text-foreground">${expense.amount.toFixed(2)}</span>
+                    <span className="font-semibold text-foreground">
+                      {expense.currency === 'INR' ? '₹' : expense.currency === 'USD' ? '$' : '€'}
+                      {expense.amount.toFixed(2)}
+                    </span>
                   </td>
                   <td className="py-4 px-4">
                     <div className="flex items-center justify-end gap-2">

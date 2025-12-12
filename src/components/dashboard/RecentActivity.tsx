@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 import { ArrowUpRight, ArrowDownRight, Users, ShoppingBag, Utensils, Car, Tv, Zap, Plane, GraduationCap, Heart } from 'lucide-react';
-import { useFinanceStore, Expense } from '@/store/financeStore';
+import { useExpenses, Expense } from '@/hooks/useExpenses';
 import { cn } from '@/lib/utils';
 
 const categoryIcons: Record<string, React.ElementType> = {
@@ -30,8 +30,8 @@ const formatDate = (dateStr: string) => {
 };
 
 export function RecentActivity() {
-  const { getRecentActivity } = useFinanceStore();
-  const recentExpenses = getRecentActivity();
+  const { getRecentActivity } = useExpenses();
+  const recentExpenses = getRecentActivity(5);
 
   return (
     <motion.div
@@ -48,18 +48,24 @@ export function RecentActivity() {
       </div>
 
       <div className="space-y-1">
-        {recentExpenses.map((expense, index) => (
-          <ActivityItem key={expense.id} expense={expense} index={index} />
-        ))}
+        {recentExpenses.length > 0 ? (
+          recentExpenses.map((expense, index) => (
+            <ActivityItem key={expense.id} expense={expense} index={index} />
+          ))
+        ) : (
+          <p className="text-center text-muted-foreground py-8">
+            No expenses yet. Add your first expense!
+          </p>
+        )}
       </div>
     </motion.div>
   );
 }
 
 function ActivityItem({ expense, index }: { expense: Expense; index: number }) {
-  const Icon = categoryIcons[expense.category] || ShoppingBag;
-  const isOwed = expense.paymentStatus === 'you_are_owed';
-  const youOwe = expense.paymentStatus === 'you_owe';
+  const Icon = categoryIcons[expense.category_name || ''] || ShoppingBag;
+  const isOwed = expense.payment_status === 'you_are_owed';
+  const youOwe = expense.payment_status === 'you_owe';
 
   return (
     <motion.div
@@ -82,7 +88,7 @@ function ActivityItem({ expense, index }: { expense: Expense; index: number }) {
       <div className="flex-1 min-w-0">
         <p className="font-medium text-foreground truncate">{expense.name}</p>
         <p className="text-sm text-muted-foreground">
-          {expense.category} • {formatDate(expense.date)}
+          {expense.category_name || 'Others'} • {formatDate(expense.date)}
         </p>
       </div>
 
@@ -91,9 +97,9 @@ function ActivityItem({ expense, index }: { expense: Expense; index: number }) {
           'font-semibold',
           isOwed ? 'text-success' : youOwe ? 'text-danger' : 'text-foreground'
         )}>
-          {isOwed ? '+' : youOwe ? '-' : '-'}${expense.amount.toFixed(2)}
+          {isOwed ? '+' : youOwe ? '-' : '-'}₹{expense.amount.toFixed(2)}
         </p>
-        {expense.paymentStatus !== 'paid' && (
+        {expense.payment_status !== 'paid' && (
           <span className={cn(
             'text-xs px-2 py-0.5 rounded-full',
             isOwed ? 'bg-success/10 text-success' : 'bg-danger/10 text-danger'

@@ -1,9 +1,9 @@
 import { motion } from 'framer-motion';
 import { Target, Plus } from 'lucide-react';
-import { useFinanceStore } from '@/store/financeStore';
+import { useSavingsGoals } from '@/hooks/useSavingsGoals';
 
 export function SavingsWidget() {
-  const { savingsGoals } = useFinanceStore();
+  const { goals: savingsGoals, isLoading } = useSavingsGoals();
 
   return (
     <motion.div
@@ -21,7 +21,9 @@ export function SavingsWidget() {
 
       <div className="space-y-4">
         {savingsGoals.slice(0, 2).map((goal, index) => {
-          const progress = (goal.currentAmount / goal.targetAmount) * 100;
+          const progress = goal.target_amount > 0 
+            ? (goal.current_amount / goal.target_amount) * 100 
+            : 0;
           
           return (
             <motion.div
@@ -38,7 +40,7 @@ export function SavingsWidget() {
                 <div className="flex-1">
                   <p className="font-medium text-foreground">{goal.name}</p>
                   <p className="text-xs text-muted-foreground">
-                    ${goal.currentAmount.toLocaleString()} of ${goal.targetAmount.toLocaleString()}
+                    ₹{goal.current_amount.toLocaleString()} of ₹{goal.target_amount.toLocaleString()}
                   </p>
                 </div>
                 <span className="text-sm font-semibold text-primary">
@@ -58,7 +60,7 @@ export function SavingsWidget() {
           );
         })}
 
-        {savingsGoals.length === 0 && (
+        {savingsGoals.length === 0 && !isLoading && (
           <div className="text-center py-6">
             <Target className="w-10 h-10 mx-auto text-muted-foreground/50 mb-2" />
             <p className="text-sm text-muted-foreground">No savings goals yet</p>

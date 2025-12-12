@@ -1,50 +1,9 @@
 import { motion } from 'framer-motion';
 import { Bell, AlertTriangle, CheckCircle, Info, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-
-interface Notification {
-  id: string;
-  type: 'warning' | 'success' | 'info';
-  title: string;
-  message: string;
-  time: string;
-  read: boolean;
-}
-
-const sampleNotifications: Notification[] = [
-  {
-    id: '1',
-    type: 'warning',
-    title: 'Budget Alert',
-    message: 'You have used 85% of your monthly budget for Shopping.',
-    time: '2 hours ago',
-    read: false,
-  },
-  {
-    id: '2',
-    type: 'success',
-    title: 'Savings Goal Achieved!',
-    message: 'Congratulations! You have reached 50% of your Emergency Fund goal.',
-    time: '1 day ago',
-    read: false,
-  },
-  {
-    id: '3',
-    type: 'info',
-    title: 'Payment Reminder',
-    message: 'Your Netflix subscription of $15.99 is due tomorrow.',
-    time: '2 days ago',
-    read: true,
-  },
-  {
-    id: '4',
-    type: 'info',
-    title: 'New Feature',
-    message: 'Check out AI Insights to get personalized spending recommendations.',
-    time: '3 days ago',
-    read: true,
-  },
-];
+import { useNotifications } from '@/hooks/useNotifications';
+import { Skeleton } from '@/components/ui/skeleton';
+import { formatDistanceToNow } from 'date-fns';
 
 const typeConfig = {
   warning: {
@@ -65,10 +24,50 @@ const typeConfig = {
     border: 'border-info/20',
     text: 'text-info',
   },
+  welcome: {
+    icon: CheckCircle,
+    bg: 'bg-success/10',
+    border: 'border-success/20',
+    text: 'text-success',
+  },
+  expense: {
+    icon: Info,
+    bg: 'bg-primary/10',
+    border: 'border-primary/20',
+    text: 'text-primary',
+  },
+  group: {
+    icon: Info,
+    bg: 'bg-info/10',
+    border: 'border-info/20',
+    text: 'text-info',
+  },
+  login: {
+    icon: Info,
+    bg: 'bg-info/10',
+    border: 'border-info/20',
+    text: 'text-info',
+  },
 };
 
 export default function Notifications() {
-  const unreadCount = sampleNotifications.filter(n => !n.read).length;
+  const { notifications, unreadCount, markAllAsRead, deleteNotification, markAsRead, isLoading } = useNotifications();
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6 max-w-2xl">
+        <div className="flex justify-between items-center">
+          <Skeleton className="h-12 w-48" />
+          <Skeleton className="h-10 w-32" />
+        </div>
+        <div className="space-y-3">
+          {[...Array(4)].map((_, i) => (
+            <Skeleton key={i} className="h-24 rounded-xl" />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 max-w-2xl">
@@ -85,15 +84,17 @@ export default function Notifications() {
             </p>
           </div>
         </div>
-        <Button variant="outline" size="sm">
-          Mark all as read
-        </Button>
+        {unreadCount > 0 && (
+          <Button variant="outline" size="sm" onClick={() => markAllAsRead()}>
+            Mark all as read
+          </Button>
+        )}
       </div>
 
       {/* Notifications List */}
       <div className="space-y-3">
-        {sampleNotifications.map((notification, index) => {
-          const config = typeConfig[notification.type];
+        {notifications.map((notification, index) => {
+          const config = typeConfig[notification.type as keyof typeof typeConfig] || typeConfig.info;
           const Icon = config.icon;
 
           return (
@@ -102,34 +103,43 @@ export default function Notifications() {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.05 }}
-              className={`flex items-start gap-4 p-4 rounded-xl border transition-colors ${
-                notification.read 
+              className={`flex items-start gap-4 p-4 rounded-xl border transition-colors cursor-pointer ${
+                notification.is_read 
                   ? 'bg-secondary/30 border-border' 
                   : `${config.bg} ${config.border}`
               }`}
+              onClick={() => !notification.is_read && markAsRead(notification.id)}
             >
               <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${
-                notification.read ? 'bg-muted text-muted-foreground' : `${config.bg} ${config.text}`
+                notification.is_read ? 'bg-muted text-muted-foreground' : `${config.bg} ${config.text}`
               }`}>
                 <Icon className="w-5 h-5" />
               </div>
               
               <div className="flex-1 min-w-0">
                 <div className="flex items-start justify-between gap-2">
-                  <h3 className={`font-semibold ${notification.read ? 'text-muted-foreground' : 'text-foreground'}`}>
+                  <h3 className={`font-semibold ${notification.is_read ? 'text-muted-foreground' : 'text-foreground'}`}>
                     {notification.title}
                   </h3>
-                  {!notification.read && (
+                  {!notification.is_read && (
                     <span className="w-2 h-2 rounded-full bg-primary shrink-0 mt-2" />
                   )}
                 </div>
-                <p className={`text-sm mt-1 ${notification.read ? 'text-muted-foreground/70' : 'text-muted-foreground'}`}>
+                <p className={`text-sm mt-1 ${notification.is_read ? 'text-muted-foreground/70' : 'text-muted-foreground'}`}>
                   {notification.message}
                 </p>
-                <p className="text-xs text-muted-foreground/60 mt-2">{notification.time}</p>
+                <p className="text-xs text-muted-foreground/60 mt-2">
+                  {formatDistanceToNow(new Date(notification.created_at), { addSuffix: true })}
+                </p>
               </div>
 
-              <button className="p-2 rounded-md hover:bg-danger/10 transition-colors text-muted-foreground hover:text-danger shrink-0">
+              <button 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  deleteNotification(notification.id);
+                }}
+                className="p-2 rounded-md hover:bg-danger/10 transition-colors text-muted-foreground hover:text-danger shrink-0"
+              >
                 <Trash2 className="w-4 h-4" />
               </button>
             </motion.div>
@@ -137,7 +147,7 @@ export default function Notifications() {
         })}
       </div>
 
-      {sampleNotifications.length === 0 && (
+      {notifications.length === 0 && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
