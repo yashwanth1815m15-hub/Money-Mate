@@ -1,24 +1,40 @@
 import { motion } from 'framer-motion';
 import { Sparkles, TrendingUp, TrendingDown, PiggyBank, AlertCircle, Lightbulb } from 'lucide-react';
-import { useFinanceStore } from '@/store/financeStore';
+import { useExpenses } from '@/hooks/useExpenses';
+import { useBudget } from '@/hooks/useBudget';
+import { useSavingsGoals } from '@/hooks/useSavingsGoals';
+import { useAuth } from '@/contexts/AuthContext';
+import { formatCurrency, getCurrencySymbol } from '@/lib/currency';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function AIInsights() {
-  const { expenses, monthlyBudget, getTotalSpent, getCategorySpending, savingsGoals } = useFinanceStore();
-  const totalSpent = getTotalSpent();
+  const { profile } = useAuth();
+  const { expenses, getMonthlyStats, getCategorySpending, isLoading: expensesLoading } = useExpenses();
+  const { budget, isLoading: budgetLoading } = useBudget();
+  const { goals: savingsGoals, isLoading: savingsLoading } = useSavingsGoals();
+
+  const currency = profile?.preferred_currency || 'INR';
+  const symbol = getCurrencySymbol(currency);
+  const displayName = profile?.display_name || profile?.email?.split('@')[0] || 'there';
+  
+  const { totalSpent } = getMonthlyStats();
+  const monthlyBudget = budget?.monthly_budget || 50000;
   const categorySpending = getCategorySpending();
-  const percentageUsed = (totalSpent / monthlyBudget) * 100;
+  const percentageUsed = monthlyBudget > 0 ? (totalSpent / monthlyBudget) * 100 : 0;
 
   // Generate insights
   const topCategory = categorySpending[0];
   const potentialSavings = totalSpent * 0.1; // 10% potential savings
   const averageDaily = totalSpent / 30;
 
+  const isLoading = expensesLoading || budgetLoading || savingsLoading;
+
   const insights = [
     {
       icon: TrendingUp,
       title: 'Top Spending Category',
       description: topCategory 
-        ? `You spent $${topCategory.amount.toFixed(2)} on ${topCategory.category} this month, which is ${topCategory.percentage.toFixed(0)}% of your total spending.`
+        ? `You spent ${formatCurrency(topCategory.amount, currency)} on ${topCategory.category} this month, which is ${topCategory.percentage.toFixed(0)}% of your total spending.`
         : 'Start tracking expenses to see your spending patterns.',
       type: 'info' as const,
     },
@@ -33,13 +49,13 @@ export default function AIInsights() {
     {
       icon: PiggyBank,
       title: 'Savings Opportunity',
-      description: `Based on your spending patterns, you could potentially save an extra $${potentialSavings.toFixed(0)} by reducing discretionary spending by 10%.`,
+      description: `Based on your spending patterns, you could potentially save an extra ${formatCurrency(potentialSavings, currency)} by reducing discretionary spending by 10%.`,
       type: 'tip' as const,
     },
     {
       icon: TrendingDown,
       title: 'Daily Average',
-      description: `Your average daily spending is $${averageDaily.toFixed(2)}. To stay within budget, try to keep it under $${(monthlyBudget / 30).toFixed(2)}.`,
+      description: `Your average daily spending is ${formatCurrency(averageDaily, currency)}. To stay within budget, try to keep it under ${formatCurrency(monthlyBudget / 30, currency)}.`,
       type: 'info' as const,
     },
     {
@@ -59,6 +75,24 @@ export default function AIInsights() {
     tip: 'bg-primary/10 text-primary border-primary/20',
   };
 
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <Skeleton className="h-16 w-64" />
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {[...Array(3)].map((_, i) => (
+            <Skeleton key={i} className="h-32 rounded-xl" />
+          ))}
+        </div>
+        <div className="space-y-4">
+          {[...Array(5)].map((_, i) => (
+            <Skeleton key={i} className="h-24 rounded-xl" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -68,7 +102,7 @@ export default function AIInsights() {
         </div>
         <div>
           <h1 className="text-2xl font-heading font-bold">AI Insights</h1>
-          <p className="text-muted-foreground">Smart recommendations based on your spending</p>
+          <p className="text-muted-foreground">Smart recommendations for {displayName}</p>
         </div>
       </div>
 
@@ -80,8 +114,8 @@ export default function AIInsights() {
           className="stat-card text-center"
         >
           <p className="text-sm text-muted-foreground mb-2">Monthly Spending</p>
-          <p className="text-3xl font-bold text-foreground">${totalSpent.toFixed(0)}</p>
-          <p className="text-sm text-muted-foreground mt-1">of ${monthlyBudget} budget</p>
+          <p className="text-3xl font-bold text-foreground">{formatCurrency(totalSpent, currency)}</p>
+          <p className="text-sm text-muted-foreground mt-1">of {formatCurrency(monthlyBudget, currency)} budget</p>
         </motion.div>
 
         <motion.div

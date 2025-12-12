@@ -1,15 +1,21 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, Target, X, DollarSign, Calendar, Trash2 } from 'lucide-react';
+import { Plus, Target, X, Calendar, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useSavingsGoals } from '@/hooks/useSavingsGoals';
+import { useAuth } from '@/contexts/AuthContext';
+import { formatCurrency, getCurrencySymbol } from '@/lib/currency';
 import { toast } from 'sonner';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export default function SavingsGoals() {
   const { goals: savingsGoals, addGoal, addToGoal, deleteGoal, isLoading } = useSavingsGoals();
+  const { profile } = useAuth();
+  const currency = profile?.preferred_currency || 'INR';
+  const symbol = getCurrencySymbol(currency);
+
   const [isAdding, setIsAdding] = useState(false);
   const [name, setName] = useState('');
   const [targetAmount, setTargetAmount] = useState('');
@@ -98,7 +104,7 @@ export default function SavingsGoals() {
             <div className="space-y-2">
               <Label htmlFor="target">Target Amount *</Label>
               <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">₹</span>
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">{symbol}</span>
                 <Input
                   id="target"
                   type="number"
@@ -176,15 +182,15 @@ export default function SavingsGoals() {
               <div className="grid grid-cols-3 gap-3 mb-4">
                 <div className="text-center p-3 rounded-lg bg-secondary/50">
                   <p className="text-xs text-muted-foreground mb-1">Saved</p>
-                  <p className="font-semibold text-foreground">₹{goal.current_amount.toLocaleString()}</p>
+                  <p className="font-semibold text-foreground">{formatCurrency(goal.current_amount, currency)}</p>
                 </div>
                 <div className="text-center p-3 rounded-lg bg-secondary/50">
                   <p className="text-xs text-muted-foreground mb-1">Target</p>
-                  <p className="font-semibold text-foreground">₹{goal.target_amount.toLocaleString()}</p>
+                  <p className="font-semibold text-foreground">{formatCurrency(goal.target_amount, currency)}</p>
                 </div>
                 <div className="text-center p-3 rounded-lg bg-secondary/50">
                   <p className="text-xs text-muted-foreground mb-1">Remaining</p>
-                  <p className="font-semibold text-primary">₹{Math.max(remaining, 0).toLocaleString()}</p>
+                  <p className="font-semibold text-primary">{formatCurrency(Math.max(remaining, 0), currency)}</p>
                 </div>
               </div>
 
