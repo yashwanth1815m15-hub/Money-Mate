@@ -1,15 +1,18 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, Users, X, DollarSign, UserPlus, Receipt, ArrowRight } from 'lucide-react';
+import { Plus, Users, X, DollarSign, UserPlus, Receipt, ArrowRight, PlusCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useGroups } from '@/hooks/useGroups';
+import { useCategories } from '@/hooks/useCategories';
+import { useExpenses } from '@/hooks/useExpenses';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { Skeleton } from '@/components/ui/skeleton';
 import { supabase } from '@/integrations/supabase/client';
-import { formatCurrency } from '@/lib/currency';
+import { formatCurrency, getCurrencySymbol } from '@/lib/currency';
 
 interface GroupMemberWithProfile {
   id: string;
@@ -40,6 +43,8 @@ interface ExpenseSplit {
 export default function Groups() {
   const { user, profile } = useAuth();
   const { groups, createGroup, addMember, isLoading, isCreating } = useGroups();
+  const { categories } = useCategories();
+  const { addExpense, isAdding: isAddingExpense } = useExpenses();
   const [isCreatingGroup, setIsCreatingGroup] = useState(false);
   const [newGroupName, setNewGroupName] = useState('');
   const [description, setDescription] = useState('');
@@ -50,6 +55,12 @@ export default function Groups() {
   const [groupExpenses, setGroupExpenses] = useState<Record<string, GroupExpense[]>>({});
   const [expenseSplits, setExpenseSplits] = useState<Record<string, ExpenseSplit[]>>({});
   const [isAddingMember, setIsAddingMember] = useState(false);
+  
+  // Add expense form state
+  const [addingExpenseToGroup, setAddingExpenseToGroup] = useState<string | null>(null);
+  const [expenseName, setExpenseName] = useState('');
+  const [expenseAmount, setExpenseAmount] = useState('');
+  const [expenseCategory, setExpenseCategory] = useState('');
 
   const currency = profile?.preferred_currency || 'INR';
 
@@ -154,6 +165,32 @@ export default function Groups() {
     } finally {
       setIsAddingMember(false);
     }
+  };
+
+  const handleAddGroupExpense = (groupId: string) => {
+    if (!expenseName.trim() || !expenseAmount || !expenseCategory) {
+      toast.error('Please fill in all fields');
+      return;
+    }
+
+    addExpense({
+      name: expenseName,
+      amount: parseFloat(expenseAmount),
+      currency,
+      category_name: expenseCategory,
+      date: new Date().toISOString().split('T')[0],
+      type: 'group',
+      group_id: groupId,
+      payment_status: 'paid',
+    });
+
+    setExpenseName('');
+    setExpenseAmount('');
+    setExpenseCategory('');
+    setAddingExpenseToGroup(null);
+    
+    // Refresh group details after adding expense
+    setTimeout(() => fetchGroupDetails(groupId), 500);
   };
 
   const calculateGroupStats = (groupId: string) => {
@@ -425,16 +462,88 @@ export default function Groups() {
                     </Button>
                   </div>
                 </div>
+              ) : addingExpenseToGroup === group.id ? (
+                <div className="space-y-3 border-t border-border pt-4 mt-4">
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-2">
+                      <PlusCircle className="w-4 h-4" />
+                      Add Group Expense
+                    </Label>
+                    <Input
+                      placeholder="Expense name (e.g., Dinner)"
+                      value={expenseName}
+                      onChange={(e) => setExpenseName(e.target.value)}
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-medium text-sm">
+                        {getCurrencySymbol(currency)}
+                      </span>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        placeholder="Amount"
+                        className="pl-8"
+                        value={expenseAmount}
+                        onChange={(e) => setExpenseAmount(e.target.value)}
+                      />
+                    </div>
+                    <Select value={expenseCategory} onValueChange={setExpenseCategory}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Category" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {categories.map((cat) => (
+                          <SelectItem key={cat.id} value={cat.name}>{cat.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="flex-1"
+                      onClick={() => {
+                        setAddingExpenseToGroup(null);
+                        setExpenseName('');
+                        setExpenseAmount('');
+                        setExpenseCategory('');
+                      }}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      size="sm"
+                      className="flex-1"
+                      onClick={() => handleAddGroupExpense(group.id)}
+                      disabled={isAddingExpense}
+                    >
+                      {isAddingExpense ? 'Adding...' : 'Add Expense'}
+                    </Button>
+                  </div>
+                </div>
               ) : (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-full mt-4"
-                  onClick={() => setSelectedGroupId(group.id)}
-                >
-                  <UserPlus className="w-4 h-4 mr-2" />
-                  Add Member
-                </Button>
+                <div className="flex gap-2 mt-4">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1"
+                    onClick={() => setSelectedGroupId(group.id)}
+                  >
+                    <UserPlus className="w-4 h-4 mr-2" />
+                    Add Member
+                  </Button>
+                  <Button
+                    size="sm"
+                    className="flex-1"
+                    onClick={() => setAddingExpenseToGroup(group.id)}
+                  >
+                    <PlusCircle className="w-4 h-4 mr-2" />
+                    Add Expense
+                  </Button>
+                </div>
               )}
             </motion.div>
           );
